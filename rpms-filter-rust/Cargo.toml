@@ -1,0 +1,9 @@
+[package]
+name = "rpms-filter-rust"
+version = "0.1.0"
+authors = ["Andy Georges <itkovian@gmail.com>"]
+
+[dependencies]
+clap = "2.27.1"
+regex = "0.2.2"
+version = "2.0.1"
