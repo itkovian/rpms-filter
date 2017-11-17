@@ -115,3 +115,47 @@ fn main() {
         println!("{}", p);
     }
 }
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+
+    #[test]
+    fn test_regexify() {
+
+        let pattern_1 = "test*test.*.test";
+        let pattern_2 = "*test*";
+
+        let (prefix_1, regex_1) = regexify(pattern_1);
+        assert!(prefix_1 == "test");
+        assert!(regex_1.as_str() == "test[-a-zA-Z0-9_.]*test.[-a-zA-Z0-9_.]*.test");
+
+        let (prefix_2, regex_2) = regexify(pattern_2);
+        assert!(prefix_2 == "");
+        assert!(regex_2.as_str() == "[-a-zA-Z0-9_.]*test[-a-zA-Z0-9_.]*");
+    }
+
+    #[test]
+    fn test_remove() {
+
+        let locked = vec![
+            "kernel-firmware-2.6.32-431.29.2.el6",
+            "Lmod-*.ug*",
+            "gpfs.gskit-8.0.50-*",
+            "kernel*-3.10.0-327.28.3.el7"
+        ];
+
+        let rcs = vec![
+            ("torque-server-3.0.2-el6.ug.2.x86_64.rpm", "/testrepo/torque-server-3.0.2-el6.ug.2.x86_64.rpm"),
+            ("kernel-firmware-3.10.0-327.28.3.el7.x86_64.rpm", "/testrepo/kernel-firmware-3.10.0-327.28.3.el7.x86_64.rpm"),
+            ("torque-server-3.0.8-el6.ug.2.x86_64.rpm", "/testrepo/torque-server-3.0.8-el6.ug.2.x86_64.rpm")
+        ];
+
+        let removals = remove(locked, rcs);
+
+        assert!(removals[0] == "/testrepo/torque-server-3.0.2-el6.ug.2.x86_64.rpm");
+        //assert!(removals[1] == "/testrepo/torque-server-3.0.8-el6.ug.2.x86_64.rpm");
+
+    }
+}
