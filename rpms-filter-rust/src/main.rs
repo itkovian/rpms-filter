@@ -52,23 +52,25 @@ fn remove<'a>(locked_packages: Vec<&str>, removal_candidates: Vec<(&'a str, &'a 
 
         let (prefix, regex) : (&str, Regex) = regexify(lp);
         //println!("----> prefix: {}, regex: {:?}", &prefix, &regex);
+        //println!("----> candidates: {:?}", candidates);
 
         // these can never be matched, since they come before the prefix
         let mut rs : Vec<&str> = candidates.iter()
                                            .take_while(|&&(bn , _)| bn < &prefix)
-                                           .map(|&(_, p)| p)
+                                           .map(|&t| t.1)
                                            .collect();
         //println!("----> Removing {:?}", &rs);
         removals.append(&mut rs);
 
         // we drop the ones matching the current regex, since these are locked
-        candidates = candidates.iter()
-                               .skip_while(|&&(bn, _)| bn < &prefix)
-                               .skip_while(|&&(bn, _)| regex.is_match(bn))
-                               .cloned()
+        candidates = candidates.into_iter()
+                               .skip_while(|&(bn, _)| bn < &prefix)
+                               .skip_while(|&(bn, _)| regex.is_match(bn))
                                .collect();
         //println!("----> {} candidates left", candidates.len());
     }
+    let mut remainder : Vec<&str> = candidates.into_iter().map(|t| t.1).collect();
+    removals.append(&mut remainder);
     removals
 }
 
