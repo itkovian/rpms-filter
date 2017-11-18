@@ -38,10 +38,11 @@ from vsc.rpms.rpmrepocleanup import cleanup
 
 logger = fancylogger.getLogger()
 
+
 def checkinput(options):
     """Validate input and return options."""
     if not options.locked_packages:
-        logger.error( "locked_packages not given.")
+        logger.error("locked_packages not given.")
         sys.exit(1)
     if not options.removeable_packages:
         logger.error("removeable_packages not given.")
@@ -56,10 +57,12 @@ def checkinput(options):
 
     return options.locked_packages, options.removeable_packages
 
+
 def main(options):
     """Main run of the script."""
     lockedpf, removepf = checkinput(options)
     cleanup(lockedpf, removepf)
+
 
 if __name__ == '__main__':
     OPTIONS = {

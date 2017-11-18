@@ -40,7 +40,6 @@ def readlockedpf(lockedpf):
         reader = csv.reader(f)
         for row in reader:
             lockedp.append(row[0])
-    lockedp.sort()
     return lockedp
 
 
@@ -51,7 +50,6 @@ def readremovepf(removepf):
 
     # remove empty lines
     lines = filter(None, lines)
-    lines.sort()
     return lines
 
 
@@ -70,21 +68,23 @@ def makewildcardregex(listp):
 
 def sortedfilterlockedp(lockedp, removep):
     keepers = set()
-    lockedp = makewildcardregex(lockedp)
+    lockedp = sorted(makewildcardregex(lockedp), reverse=True)
     candidates = set(removep)
+
+    removep = sorted([(os.path.basename(p), p) for p in removep], reverse=True)
+
     for (locked_prefix, locked_package_regex) in lockedp:
         logging.debug("Checking all packages matching %s", locked_package_regex)
         skipped = set()
 
-        for package in removep:
-            if re.search(locked_package_regex, package):
+        for (bpackage, package) in removep:
+            if re.search(locked_package_regex, bpackage):
                 keepers.add(package)
-                logging.debug("--------> keeping %s as it matches with %s",package, locked_package_regex)
+                logging.debug("--------> keeping %s as it matches with %s", package, locked_package_regex)
                 continue
 
-            bpackage = os.path.basename(package)
             logging.debug("----> Comparing %s", bpackage)
-            if locked_prefix and bpackage > locked_prefix:
+            if locked_prefix and bpackage < locked_prefix:
                 logging.debug("--------> breaking on %s and %s", package, locked_prefix)
                 break
 
