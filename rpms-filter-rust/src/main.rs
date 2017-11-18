@@ -34,47 +34,6 @@ fn get_opts<'a>() -> ArgMatches<'a> {
 }
 
 
-fn regexify<'a>(pattern: &'a str) -> (&'a str, Regex) {
-    let prefix = pattern.split("*").nth(0).unwrap();
-    let regex_pattern = pattern.replace("*", "[-a-zA-Z0-9_.]*");
-    let regex = Regex::new(&regex_pattern.as_str()).unwrap();
-    (prefix, regex)
-}
-
-
-fn remove<'a>(locked_packages: Vec<&str>, removal_candidates: Vec<(&'a str, &'a str)>) -> Vec<&'a str> {
-
-    let mut removals : Vec<&str> = Vec::new();
-    let mut candidates : Vec<(&str, &str)> = removal_candidates.clone();
-
-    for lp in locked_packages.iter() {
-        //println!("Checking locked package {}", &lp);
-
-        let (prefix, regex) : (&str, Regex) = regexify(lp);
-        //println!("----> prefix: {}, regex: {:?}", &prefix, &regex);
-        //println!("----> candidates: {:?}", candidates);
-
-        // these can never be matched, since they come before the prefix
-        let mut rs : Vec<&str> = candidates.iter()
-                                           .take_while(|&&(bn , _)| bn < &prefix)
-                                           .map(|&t| t.1)
-                                           .collect();
-        //println!("----> Removing {:?}", &rs);
-        removals.append(&mut rs);
-
-        // we drop the ones matching the current regex, since these are locked
-        candidates = candidates.into_iter()
-                               .skip_while(|&(bn, _)| bn < &prefix)
-                               .skip_while(|&(bn, _)| regex.is_match(bn))
-                               .collect();
-        //println!("----> {} candidates left", candidates.len());
-    }
-    let mut remainder : Vec<&str> = candidates.into_iter().map(|t| t.1).collect();
-    removals.append(&mut remainder);
-    removals
-}
-
-
 // Return the lines in a file as an iterator
 fn get_lines<P>(path: P) -> Result< Vec<String>, io::Error>
 where
@@ -90,26 +49,22 @@ where
 fn main() {
     let opts = get_opts();
 
-    let locked_lines : Vec<String> = get_lines(Path::new(opts.value_of("locked").unwrap())).unwrap();
-    let mut locked_packages: Vec<&str> = locked_lines.iter()
-                                                     .map(|s| s.split(',').nth(0).unwrap())
-                                                     .collect();
-    locked_packages.sort();
+    let mut locked_lines : Vec<String> = get_lines(Path::new(opts.value_of("locked").unwrap())).unwrap();
+    let locked_packages : Vec<String> = locked_lines.iter_mut()
+                                                  .map(|s| {
+                                                      let s_ = s.split(',').nth(0).unwrap();
+                                                      let s__ = s_.replace("*", "[-a-zA-Z0-9_.]*");
+                                                      s__
+                                                  })
+                                                  .collect();
+    let locked_regex_pattern = ["(", locked_packages.join("|").as_str(), ")"].concat();
+    let regex = Regex::new(&locked_regex_pattern.as_str()).unwrap();
 
     let removal_lines : Vec<String> = get_lines(Path::new(opts.value_of("remove").unwrap())).unwrap();
-    let removal_candidates_ : Vec<&str> = removal_lines.iter().map(|s| s.as_str()).collect();
-    let mut removal_candidates : Vec<(&str, &str)> = removal_candidates_.clone()
-        .iter()
-        .map(|&s| Path::new(s).file_name().unwrap().to_str().unwrap())
-        .zip(
-            removal_candidates_.clone()
-            .iter()
-            .map(|s| *s)
-        ).collect();
-
-    removal_candidates.sort();
-
-    let removals = remove(locked_packages, removal_candidates);
+    let removal_candidates : Vec<&str> = removal_lines.iter().map(|s| s.as_str()).collect();
+    let removals : Vec<&str> = removal_candidates.into_iter()
+                                     .filter(|&p| ! regex.is_match(p))
+                                     .collect();
 
     for p in removals.iter() {
         println!("{}", p);
@@ -120,21 +75,6 @@ fn main() {
 mod tests {
 
     use super::*;
-
-    #[test]
-    fn test_regexify() {
-
-        let pattern_1 = "test*test.*.test";
-        let pattern_2 = "*test*";
-
-        let (prefix_1, regex_1) = regexify(pattern_1);
-        assert!(prefix_1 == "test");
-        assert!(regex_1.as_str() == "test[-a-zA-Z0-9_.]*test.[-a-zA-Z0-9_.]*.test");
-
-        let (prefix_2, regex_2) = regexify(pattern_2);
-        assert!(prefix_2 == "");
-        assert!(regex_2.as_str() == "[-a-zA-Z0-9_.]*test[-a-zA-Z0-9_.]*");
-    }
 
     #[test]
     fn test_remove() {
